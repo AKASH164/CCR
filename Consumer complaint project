@@ -1,0 +1,1220 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 36,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import warnings\n",
+    "warnings.filterwarnings('ignore')\n",
+    "\n",
+    "\n",
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "import math\n",
+    "\n",
+    "pd.set_option('display.max_rows', None) # to display all the values in a dataframe\n",
+    "\n",
+    "from sklearn.model_selection import KFold"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Data loading"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 173,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Date received</th>\n",
+       "      <th>Product</th>\n",
+       "      <th>Sub-product</th>\n",
+       "      <th>Issue</th>\n",
+       "      <th>Sub-issue</th>\n",
+       "      <th>Consumer complaint narrative</th>\n",
+       "      <th>Company public response</th>\n",
+       "      <th>Company</th>\n",
+       "      <th>State</th>\n",
+       "      <th>ZIP code</th>\n",
+       "      <th>Tags</th>\n",
+       "      <th>Consumer consent provided?</th>\n",
+       "      <th>Submitted via</th>\n",
+       "      <th>Date sent to company</th>\n",
+       "      <th>Company response to consumer</th>\n",
+       "      <th>Timely response?</th>\n",
+       "      <th>Consumer disputed?</th>\n",
+       "      <th>Complaint ID</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>2014-05-15</td>\n",
+       "      <td>Credit card</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Billing statement</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Wells Fargo &amp; Company</td>\n",
+       "      <td>MI</td>\n",
+       "      <td>48342</td>\n",
+       "      <td>Older American</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Web</td>\n",
+       "      <td>2014-05-16</td>\n",
+       "      <td>Closed with explanation</td>\n",
+       "      <td>Yes</td>\n",
+       "      <td>No</td>\n",
+       "      <td>856103</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>2014-09-18</td>\n",
+       "      <td>Bank account or service</td>\n",
+       "      <td>(CD) Certificate of deposit</td>\n",
+       "      <td>Making/receiving payments, sending money</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Santander Bank US</td>\n",
+       "      <td>PA</td>\n",
+       "      <td>18042</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Referral</td>\n",
+       "      <td>2014-09-24</td>\n",
+       "      <td>Closed</td>\n",
+       "      <td>Yes</td>\n",
+       "      <td>No</td>\n",
+       "      <td>1034666</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>2014-03-13</td>\n",
+       "      <td>Credit reporting</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Incorrect information on credit report</td>\n",
+       "      <td>Account status</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Equifax</td>\n",
+       "      <td>CA</td>\n",
+       "      <td>92427</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Referral</td>\n",
+       "      <td>2014-04-03</td>\n",
+       "      <td>Closed with non-monetary relief</td>\n",
+       "      <td>Yes</td>\n",
+       "      <td>No</td>\n",
+       "      <td>756363</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>2015-07-17</td>\n",
+       "      <td>Credit card</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Billing statement</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>My credit card statement from US Bank, XXXX. X...</td>\n",
+       "      <td>Company chooses not to provide a public response</td>\n",
+       "      <td>U.S. Bancorp</td>\n",
+       "      <td>GA</td>\n",
+       "      <td>305XX</td>\n",
+       "      <td>Older American</td>\n",
+       "      <td>Consent provided</td>\n",
+       "      <td>Web</td>\n",
+       "      <td>2015-07-17</td>\n",
+       "      <td>Closed with monetary relief</td>\n",
+       "      <td>Yes</td>\n",
+       "      <td>No</td>\n",
+       "      <td>1474177</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>2014-11-20</td>\n",
+       "      <td>Credit card</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Transaction issue</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Bank of America</td>\n",
+       "      <td>MA</td>\n",
+       "      <td>02127</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Web</td>\n",
+       "      <td>2014-11-28</td>\n",
+       "      <td>Closed with explanation</td>\n",
+       "      <td>Yes</td>\n",
+       "      <td>No</td>\n",
+       "      <td>1132572</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "  Date received                  Product                  Sub-product  \\\n",
+       "0    2014-05-15              Credit card                          NaN   \n",
+       "1    2014-09-18  Bank account or service  (CD) Certificate of deposit   \n",
+       "2    2014-03-13         Credit reporting                          NaN   \n",
+       "3    2015-07-17              Credit card                          NaN   \n",
+       "4    2014-11-20              Credit card                          NaN   \n",
+       "\n",
+       "                                      Issue       Sub-issue  \\\n",
+       "0                         Billing statement             NaN   \n",
+       "1  Making/receiving payments, sending money             NaN   \n",
+       "2    Incorrect information on credit report  Account status   \n",
+       "3                         Billing statement             NaN   \n",
+       "4                         Transaction issue             NaN   \n",
+       "\n",
+       "                        Consumer complaint narrative  \\\n",
+       "0                                                NaN   \n",
+       "1                                                NaN   \n",
+       "2                                                NaN   \n",
+       "3  My credit card statement from US Bank, XXXX. X...   \n",
+       "4                                                NaN   \n",
+       "\n",
+       "                            Company public response                Company  \\\n",
+       "0                                               NaN  Wells Fargo & Company   \n",
+       "1                                               NaN      Santander Bank US   \n",
+       "2                                               NaN                Equifax   \n",
+       "3  Company chooses not to provide a public response           U.S. Bancorp   \n",
+       "4                                               NaN        Bank of America   \n",
+       "\n",
+       "  State ZIP code            Tags Consumer consent provided? Submitted via  \\\n",
+       "0    MI    48342  Older American                        NaN           Web   \n",
+       "1    PA    18042             NaN                        NaN      Referral   \n",
+       "2    CA    92427             NaN                        NaN      Referral   \n",
+       "3    GA    305XX  Older American           Consent provided           Web   \n",
+       "4    MA    02127             NaN                        NaN           Web   \n",
+       "\n",
+       "  Date sent to company     Company response to consumer Timely response?  \\\n",
+       "0           2014-05-16          Closed with explanation              Yes   \n",
+       "1           2014-09-24                           Closed              Yes   \n",
+       "2           2014-04-03  Closed with non-monetary relief              Yes   \n",
+       "3           2015-07-17      Closed with monetary relief              Yes   \n",
+       "4           2014-11-28          Closed with explanation              Yes   \n",
+       "\n",
+       "  Consumer disputed?  Complaint ID  \n",
+       "0                 No        856103  \n",
+       "1                 No       1034666  \n",
+       "2                 No        756363  \n",
+       "3                 No       1474177  \n",
+       "4                 No       1132572  "
+      ]
+     },
+     "execution_count": 173,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "datafile_train = r'D:/Akash/Data Science/Edvancer Python/Project_1/P1 Data/Consumer_Complaints_train.csv'\n",
+    "datafile_test = r'D:/Akash/Data Science/Edvancer Python/Project_1/P1 Data/Consumer_Complaints_test_share.csv'\n",
+    "cd_train = pd.read_csv(datafile_train)\n",
+    "cd_test =  pd.read_csv(datafile_test)\n",
+    "\n",
+    "cd_train.head()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "(478421, 18)"
+      ]
+     },
+     "execution_count": 5,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "cd_train.shape"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 147,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "Older American                   39064\n",
+       "Servicemember                    22592\n",
+       "Older American, Servicemember     5550\n",
+       "Name: Tags, dtype: int64"
+      ]
+     },
+     "execution_count": 147,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "cd_train[\"Tags\"].value_counts()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 40,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "85.953"
+      ]
+     },
+     "execution_count": 40,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "round(cd_train[\"Tags\"].isnull().sum()/ len(cd_train['Tags'])*100, 3)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "74019"
+      ]
+     },
+     "execution_count": 16,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "cd_train[\"Consumer complaint narrative\"].nunique()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "12"
+      ]
+     },
+     "execution_count": 17,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "cd_train[\"Product\"].nunique()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "Mortgage                   156175\n",
+       "Debt collection             86544\n",
+       "Credit reporting            81115\n",
+       "Credit card                 57358\n",
+       "Bank account or service     54403\n",
+       "Consumer Loan               18599\n",
+       "Student loan                14918\n",
+       "Money transfers              3349\n",
+       "Payday loan                  3219\n",
+       "Prepaid card                 2226\n",
+       "Other financial service       507\n",
+       "Virtual currency                8\n",
+       "Name: Product, dtype: int64"
+      ]
+     },
+     "execution_count": 18,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "cd_train[\"Product\"].value_counts()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 174,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Date received : 1759\n",
+      "Product : 12\n",
+      "Sub-product : 47\n",
+      "Issue : 95\n",
+      "Sub-issue : 68\n",
+      "Consumer complaint narrative : 74019\n",
+      "Company public response : 10\n",
+      "Company : 3276\n",
+      "State : 62\n",
+      "ZIP code : 25962\n",
+      "Tags : 3\n",
+      "Consumer consent provided? : 4\n",
+      "Submitted via : 6\n",
+      "Date sent to company : 1706\n",
+      "Company response to consumer : 7\n",
+      "Timely response? : 2\n",
+      "Consumer disputed? : 2\n"
+     ]
+    }
+   ],
+   "source": [
+    "for col in cd_train.select_dtypes(['object']).columns:\n",
+    "    print(col,':',cd_train[col].nunique())"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Data Prep"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 199,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Issue\n",
+      "State\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "complaint received weekday_1                                    0\n",
+       "complaint received weekday_2                                    0\n",
+       "complaint received weekday_3                                    0\n",
+       "complaint received weekday_4                                    0\n",
+       "complaint received weekday_5                                    0\n",
+       "complaint received weekday_6                                    0\n",
+       "complaint received month_10                                     0\n",
+       "complaint received month_11                                     0\n",
+       "complaint received month_12                                     0\n",
+       "complaint received month_2                                      0\n",
+       "complaint received month_3                                      0\n",
+       "complaint received month_4                                      0\n",
+       "complaint received month_5                                      0\n",
+       "complaint received month_6                                      0\n",
+       "complaint received month_7                                      0\n",
+       "complaint received month_8                                      0\n",
+       "complaint received month_9                                      0\n",
+       "Timely response?_Yes                                            0\n",
+       "Company response to consumer_Closed with explanation            0\n",
+       "Company response to consumer_Closed with monetary relief        0\n",
+       "Company response to consumer_Closed with non-monetary relief    0\n",
+       "Company response to consumer_Closed with relief                 0\n",
+       "Company response to consumer_Closed without relief              0\n",
+       "Company response to consumer_Untimely response                  0\n",
+       "Submitted via_Fax                                               0\n",
+       "Submitted via_Phone                                             0\n",
+       "Submitted via_Postal mail                                       0\n",
+       "Submitted via_Referral                                          0\n",
+       "Submitted via_Web                                               0\n",
+       "Product_Consumer Loan                                           0\n",
+       "Product_Credit card                                             0\n",
+       "Product_Credit reporting                                        0\n",
+       "Product_Debt collection                                         0\n",
+       "Product_Money transfers                                         0\n",
+       "Product_Mortgage                                                0\n",
+       "Product_Other financial service                                 0\n",
+       "Product_Payday loan                                             0\n",
+       "Product_Prepaid card                                            0\n",
+       "Product_Student loan                                            0\n",
+       "Product_Virtual currency                                        0\n",
+       "Consumer disputed?                                              0\n",
+       "Complaint ID                                                    0\n",
+       "day_diff                                                        0\n",
+       "Sub_product_is not Nan                                          0\n",
+       "Sub_issue_is not Nan                                            0\n",
+       "Consumer_complaint_narrative_is not Nan                         0\n",
+       "Company_public_response_is not Nan                              0\n",
+       "Tags_is not Nan                                                 0\n",
+       "Consumer_consent_provided_is not Nan                            0\n",
+       "Issue_Loan_modification_collection_foreclosure                  0\n",
+       "Issue_Incorrect_information_on_credit_report                    0\n",
+       "Issue_Loan_servicing__payments__escrow_account                  0\n",
+       "Issue_Cont'd_attempts_collect_debt_not_owed                     0\n",
+       "Issue_Account_opening__closing__or_management                   0\n",
+       "Issue_Disclosure_verification_of_debt                           0\n",
+       "Issue_Communication_tactics                                     0\n",
+       "Issue_Deposits_and_withdrawals                                  0\n",
+       "State_CA                                                        0\n",
+       "State_FL                                                        0\n",
+       "State_TX                                                        0\n",
+       "State_NY                                                        0\n",
+       "State_GA                                                        0\n",
+       "State_NJ                                                        0\n",
+       "State_PA                                                        0\n",
+       "State_IL                                                        0\n",
+       "State_VA                                                        0\n",
+       "State_MD                                                        0\n",
+       "State_OH                                                        0\n",
+       "State_NC                                                        0\n",
+       "State_MI                                                        0\n",
+       "State_AZ                                                        0\n",
+       "dtype: int64"
+      ]
+     },
+     "execution_count": 199,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "datafile_train = r'D:/Akash/Data Science/Edvancer Python/Project_1/P1 Data/Consumer_Complaints_train.csv'\n",
+    "datafile_test = r'D:/Akash/Data Science/Edvancer Python/Project_1/P1 Data/Consumer_Complaints_test_share.csv'\n",
+    "cd_train = pd.read_csv(datafile_train)\n",
+    "cd_test =  pd.read_csv(datafile_test)\n",
+    "\n",
+    "for col in ['Date received','Date sent to company']:\n",
+    "    cd_train[col] = pd.to_datetime(cd_train[col], infer_datetime_format = True)\n",
+    "    cd_test[col] = pd.to_datetime(cd_test[col], infer_datetime_format = True)\n",
+    "    \n",
+    "cd_train['day_diff'] = pd.to_numeric(cd_train['Date sent to company']-cd_train['Date received'])/(24*3600*(10**9))\n",
+    "cd_test['day_diff'] = pd.to_numeric(cd_test['Date sent to company']-cd_test['Date received'])/(24*3600*(10**9))\n",
+    "\n",
+    "cd_train['complaint received month'] = pd.DatetimeIndex(cd_train['Date received']).month\n",
+    "cd_train['complaint received month'] = cd_train['complaint received month'].astype(str) \n",
+    "cd_test['complaint received month'] = pd.DatetimeIndex(cd_test['Date received']).month\n",
+    "cd_test['complaint received month'] = cd_test['complaint received month'].astype(str)\n",
+    "\n",
+    "cd_train['complaint received weekday'] = pd.DatetimeIndex(cd_train['Date received']).weekday\n",
+    "cd_train['complaint received weekday'] = cd_train['complaint received weekday'].astype(str) \n",
+    "cd_test['complaint received weekday'] = pd.DatetimeIndex(cd_test['Date received']).weekday\n",
+    "cd_test['complaint received weekday'] = cd_test['complaint received weekday'].astype(str)\n",
+    "\n",
+    "for col in ['Date received','Date sent to company']:\n",
+    "    cd_train.drop([col],1,inplace=True)\n",
+    "    cd_test.drop([col],1,inplace=True)\n",
+    "\n",
+    "for col in ['Sub-product','Sub-issue','Consumer complaint narrative',\n",
+    "            'Company public response','Tags','Consumer consent provided?']:\n",
+    "    varname = col.replace('-','_').replace('?','').replace(\" \",'_')+'_is not Nan'\n",
+    "    cd_train[varname] = np.where(pd.isnull(cd_train[col]), 0, 1)\n",
+    "    cd_train.drop([col], axis = 1, inplace = True)\n",
+    "    cd_test[varname] = np.where(pd.isnull(cd_test[col]), 0, 1)\n",
+    "    cd_test.drop([col], axis = 1, inplace = True)\n",
+    "\n",
+    "for col in ['ZIP code','Company']:\n",
+    "    cd_train.drop([col], axis = 1, inplace=True)\n",
+    "    cd_test.drop([col], axis = 1, inplace=True)\n",
+    "\n",
+    "cat_cols = [\"Issue\", \"State\"]\n",
+    "\n",
+    "for col in cat_cols:\n",
+    "    freqs = cd_train[col].value_counts()\n",
+    "    k = freqs.index[freqs>10000][:-1]\n",
+    "    \n",
+    "    for cat in k:\n",
+    "        name = col + '_' + cat.replace(',','_').replace(' ','_')\n",
+    "        cd_train[name] = np.where(cd_train[col] == cat, 1, 0)\n",
+    "        cd_test[name] = np.where(cd_test[col] == cat, 1, 0)\n",
+    "    \n",
+    "    del cd_train[col]\n",
+    "    del cd_test[col]\n",
+    "    print(col)\n",
+    "\n",
+    "cat_cols_lf = ['Product', 'Submitted via', 'Company response to consumer', 'Timely response?',\n",
+    "               'complaint received month', 'complaint received weekday']\n",
+    "\n",
+    "for col in cat_cols_lf:\n",
+    "    \n",
+    "    temp = pd.get_dummies(cd_train[col], prefix = col, drop_first = True)\n",
+    "    cd_train = pd.concat([temp, cd_train], axis = 1)\n",
+    "    cd_train.drop([col], axis = 1, inplace = True)\n",
+    "    \n",
+    "    temp = pd.get_dummies(cd_test[col], prefix = col, drop_first = True)\n",
+    "    cd_test = pd.concat([temp, cd_test], axis = 1)\n",
+    "    cd_test.drop([col], axis = 1, inplace = True)\n",
+    "    \n",
+    "cd_train['Consumer disputed?'] = np.where(cd_train['Consumer disputed?'] == \"Yes\", 1, 0)\n",
+    "\n",
+    "for col in cd_train.select_dtypes(['object']).columns:\n",
+    "    print(col,':',cd_train[col].nunique())\n",
+    "    \n",
+    "cd_train.isnull().sum()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 200,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "(478421, 69)\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "0    376990\n",
+       "1    101431\n",
+       "Name: Consumer disputed?, dtype: int64"
+      ]
+     },
+     "execution_count": 200,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "x = cd_train.drop(['Consumer disputed?','Complaint ID'], axis = 1)\n",
+    "y = cd_train['Consumer disputed?']\n",
+    "\n",
+    "print(x.shape)\n",
+    "\n",
+    "y.value_counts()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 201,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from sklearn.model_selection import train_test_split\n",
+    "# Separate the train and test data\n",
+    "cd_train1, cd_val = train_test_split (cd_train, test_size = 0.2, random_state = 2) # split into 80:20 randomly with seed = 2\n",
+    "\n",
+    "# Separate the predictor variable and the target variable i.e. \"Revenue Grid\" \n",
+    "x_train = cd_train1.drop(['Consumer disputed?','Complaint ID'], axis = 1)\n",
+    "y_train = cd_train1['Consumer disputed?']\n",
+    "\n",
+    "x_val = cd_val.drop(['Consumer disputed?','Complaint ID'], axis = 1)\n",
+    "y_val = cd_val['Consumer disputed?']\n",
+    "\n",
+    "# make the index of training data serial\n",
+    "x_train.index = [i for i in range(len(x_train))]\n",
+    "y_train.index = [i for i in range(len(y_train))]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Model Building"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 180,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from sklearn.linear_model import LogisticRegression\n",
+    "from sklearn.model_selection import GridSearchCV\n",
+    "from sklearn.model_selection import cross_val_score\n",
+    "from sklearn.metrics import roc_auc_score"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 181,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def report(results, n_top=3):\n",
+    "    for i in range(1, n_top + 1):\n",
+    "        candidates = np.flatnonzero(results['rank_test_score'] == i)\n",
+    "        for candidate in candidates:\n",
+    "            print(\"Model with rank: {0}\".format(i))\n",
+    "            print(\"Mean validation score: {0:.3f} (std: {1:.3f})\".format(\n",
+    "                  results['mean_test_score'][candidate],\n",
+    "                  results['std_test_score'][candidate]))\n",
+    "            print(\"Parameters: {0}\".format(results['params'][candidate]))\n",
+    "            print(\"\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 120,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Fitting 5 folds for each of 8 candidates, totalling 40 fits\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "[Parallel(n_jobs=-1)]: Using backend LokyBackend with 8 concurrent workers.\n",
+      "[Parallel(n_jobs=-1)]: Done  40 out of  40 | elapsed: 10.7min finished\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "GridSearchCV(cv=5, error_score=nan,\n",
+       "             estimator=LogisticRegression(C=1.0, class_weight='balanced',\n",
+       "                                          dual=False, fit_intercept=True,\n",
+       "                                          intercept_scaling=1, l1_ratio=None,\n",
+       "                                          max_iter=100, multi_class='auto',\n",
+       "                                          n_jobs=None, penalty='l2',\n",
+       "                                          random_state=None, solver='liblinear',\n",
+       "                                          tol=0.0001, verbose=0,\n",
+       "                                          warm_start=False),\n",
+       "             iid='deprecated', n_jobs=-1,\n",
+       "             param_grid={'C': [0.01, 0.1, 0.5, 1], 'penalty': ['l1', 'l2']},\n",
+       "             pre_dispatch='2*n_jobs', refit=True, return_train_score=False,\n",
+       "             scoring='roc_auc', verbose=1)"
+      ]
+     },
+     "execution_count": 120,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "params={# 'class_weight':['balanced',None],\n",
+    "        'penalty':['l1','l2'],\n",
+    "        'C': [0.05, 0.1, 0.2, 0.4]}\n",
+    "        #'C':np.linspace(0.01,100,10)} #'C':np.linspace(0.01,1000,10)\n",
+    "\n",
+    "clf = LogisticRegression(solver ='liblinear', class_weight = 'balanced')\n",
+    "\n",
+    "grid_search = GridSearchCV(clf, param_grid = params, cv = 5, scoring = \"roc_auc\", verbose = 1, n_jobs = -1)\n",
+    "\n",
+    "grid_search.fit(x,y)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 122,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Model with rank: 1\n",
+      "Mean validation score: 0.618 (std: 0.001)\n",
+      "Parameters: {'C': 0.1, 'penalty': 'l1'}\n",
+      "\n",
+      "Model with rank: 2\n",
+      "Mean validation score: 0.618 (std: 0.001)\n",
+      "Parameters: {'C': 0.5, 'penalty': 'l1'}\n",
+      "\n",
+      "Model with rank: 3\n",
+      "Mean validation score: 0.618 (std: 0.001)\n",
+      "Parameters: {'C': 1, 'penalty': 'l1'}\n",
+      "\n",
+      "Model with rank: 4\n",
+      "Mean validation score: 0.618 (std: 0.001)\n",
+      "Parameters: {'C': 0.1, 'penalty': 'l2'}\n",
+      "\n",
+      "Model with rank: 5\n",
+      "Mean validation score: 0.618 (std: 0.001)\n",
+      "Parameters: {'C': 0.5, 'penalty': 'l2'}\n",
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "report(grid_search.cv_results_,5)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 215,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "LogisticRegression(C=0.1, class_weight='balanced', dual=False,\n",
+       "                   fit_intercept=True, intercept_scaling=1, l1_ratio=None,\n",
+       "                   max_iter=100, multi_class='auto', n_jobs=None, penalty='l1',\n",
+       "                   random_state=None, solver='liblinear', tol=0.0001, verbose=0,\n",
+       "                   warm_start=False)"
+      ]
+     },
+     "execution_count": 215,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "clf_logr = grid_search.best_estimator_\n",
+    "grid_search.best_estimator_"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### cross validation"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 165,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([0.62176508, 0.61932565, 0.61790067, 0.61987492, 0.61967567])"
+      ]
+     },
+     "execution_count": 165,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "clf_logr = grid_search.best_estimator_\n",
+    "scores = cross_val_score(clf_logr, x, y, cv = 5, scoring = \"roc_auc\")\n",
+    "scores"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### validation"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 211,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "[LibLinear]"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "LogisticRegression(C=0.1, class_weight='balanced', dual=False,\n",
+       "                   fit_intercept=True, intercept_scaling=1, l1_ratio=None,\n",
+       "                   max_iter=100, multi_class='auto', n_jobs=-1, penalty='l1',\n",
+       "                   random_state=None, solver='liblinear', tol=0.0001, verbose=1,\n",
+       "                   warm_start=False)"
+      ]
+     },
+     "execution_count": 211,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "from sklearn.metrics import roc_auc_score\n",
+    "\n",
+    "logr_val = LogisticRegression(C = 0.1, class_weight = 'balanced', dual = False, fit_intercept = True, intercept_scaling = 1,\n",
+    "                              l1_ratio = None, max_iter = 100, multi_class = 'auto', n_jobs = -1, penalty = 'l1',\n",
+    "                              random_state = None, solver = 'liblinear', tol = 0.0001, verbose = 1, warm_start = False)\n",
+    "\n",
+    "logr_val.fit(x_train, y_train)\n",
+    "\n",
+    "# final auc score on test data\n",
+    "roc_auc_score(y_val, logr_val.predict(x_val))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "### Fit the train data"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 216,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "LogisticRegression(C=0.1, class_weight='balanced', dual=False,\n",
+       "                   fit_intercept=True, intercept_scaling=1, l1_ratio=None,\n",
+       "                   max_iter=100, multi_class='auto', n_jobs=None, penalty='l1',\n",
+       "                   random_state=None, solver='liblinear', tol=0.0001, verbose=0,\n",
+       "                   warm_start=False)"
+      ]
+     },
+     "execution_count": 216,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "clf_logr.fit(x,y)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### finding cutoffs"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 217,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1 , 0.11,\n",
+       "       0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18, 0.19, 0.2 , 0.21, 0.22,\n",
+       "       0.23, 0.24, 0.25, 0.26, 0.27, 0.28, 0.29, 0.3 , 0.31, 0.32, 0.33,\n",
+       "       0.34, 0.35, 0.36, 0.37, 0.38, 0.39, 0.4 , 0.41, 0.42, 0.43, 0.44,\n",
+       "       0.45, 0.46, 0.47, 0.48, 0.49, 0.5 , 0.51, 0.52, 0.53, 0.54, 0.55,\n",
+       "       0.56, 0.57, 0.58, 0.59, 0.6 , 0.61, 0.62, 0.63, 0.64, 0.65, 0.66,\n",
+       "       0.67, 0.68, 0.69, 0.7 , 0.71, 0.72, 0.73, 0.74, 0.75, 0.76, 0.77,\n",
+       "       0.78, 0.79, 0.8 , 0.81, 0.82, 0.83, 0.84, 0.85, 0.86, 0.87, 0.88,\n",
+       "       0.89, 0.9 , 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97, 0.98, 0.99])"
+      ]
+     },
+     "execution_count": 217,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "cutoffs=np.linspace(0.01,0.99,99)\n",
+    "\n",
+    "cutoffs"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 218,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "train_score = clf_logr.predict_proba(x)[:, 1]\n",
+    "\n",
+    "real = y"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 219,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "KS_all = []\n",
+    "\n",
+    "for cutoff in cutoffs:\n",
+    "    \n",
+    "    predicted = (train_score>cutoff).astype(int)\n",
+    "\n",
+    "    TP = ((predicted==1) & (real==1)).sum()\n",
+    "    TN = ((predicted==0) & (real==0)).sum()\n",
+    "    FP = ((predicted==1) & (real==0)).sum()\n",
+    "    FN = ((predicted==0) & (real==1)).sum()\n",
+    "    \n",
+    "    P = TP+FN\n",
+    "    N = TN+FP\n",
+    "      \n",
+    "    KS = (TP/P)-(FP/N)\n",
+    "    \n",
+    "    \n",
+    "    KS_all.append(KS)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 220,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "0.49"
+      ]
+     },
+     "execution_count": 220,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "mycutoff = cutoffs[KS_all == max(KS_all)][0]\n",
+    "mycutoff # same as default cut-off"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 221,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Complaint ID</th>\n",
+       "      <th>Consumer disputed?</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>675956</td>\n",
+       "      <td>Yes</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>1858795</td>\n",
+       "      <td>No</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>32637</td>\n",
+       "      <td>Yes</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>1731374</td>\n",
+       "      <td>No</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>501487</td>\n",
+       "      <td>Yes</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>5</th>\n",
+       "      <td>631565</td>\n",
+       "      <td>No</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>6</th>\n",
+       "      <td>1283963</td>\n",
+       "      <td>No</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>7</th>\n",
+       "      <td>1902970</td>\n",
+       "      <td>No</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>8</th>\n",
+       "      <td>1160691</td>\n",
+       "      <td>No</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>9</th>\n",
+       "      <td>359929</td>\n",
+       "      <td>No</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "   Complaint ID Consumer disputed?\n",
+       "0        675956                Yes\n",
+       "1       1858795                 No\n",
+       "2         32637                Yes\n",
+       "3       1731374                 No\n",
+       "4        501487                Yes\n",
+       "5        631565                 No\n",
+       "6       1283963                 No\n",
+       "7       1902970                 No\n",
+       "8       1160691                 No\n",
+       "9        359929                 No"
+      ]
+     },
+     "execution_count": 221,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "prediction = np.where(clf_logr.predict(cd_test.drop(['Complaint ID'], axis = 1)) == 1, \"Yes\", \"No\")\n",
+    "                      \n",
+    "submission = pd.DataFrame(list(zip(cd_test['Complaint ID'], list(prediction))), columns=['Complaint ID','Consumer disputed?'])\n",
+    "submission.head(10)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 222,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([[0.54995558, 0.45004442],\n",
+       "       [0.35335225, 0.64664775],\n",
+       "       [0.73446176, 0.26553824],\n",
+       "       [0.36644477, 0.63355523],\n",
+       "       [0.5403818 , 0.4596182 ],\n",
+       "       [0.52060534, 0.47939466],\n",
+       "       [0.70670149, 0.29329851],\n",
+       "       [0.69385255, 0.30614745],\n",
+       "       [0.64285738, 0.35714262],\n",
+       "       [0.45351966, 0.54648034],\n",
+       "       [0.44318087, 0.55681913],\n",
+       "       [0.65167032, 0.34832968],\n",
+       "       [0.40732074, 0.59267926],\n",
+       "       [0.53370352, 0.46629648],\n",
+       "       [0.39870924, 0.60129076],\n",
+       "       [0.41448371, 0.58551629],\n",
+       "       [0.62713409, 0.37286591],\n",
+       "       [0.57521854, 0.42478146],\n",
+       "       [0.50120208, 0.49879792],\n",
+       "       [0.39872227, 0.60127773],\n",
+       "       [0.49877112, 0.50122888],\n",
+       "       [0.65767731, 0.34232269],\n",
+       "       [0.71564255, 0.28435745],\n",
+       "       [0.40852373, 0.59147627],\n",
+       "       [0.46415429, 0.53584571],\n",
+       "       [0.497985  , 0.502015  ],\n",
+       "       [0.45165071, 0.54834929],\n",
+       "       [0.37078707, 0.62921293],\n",
+       "       [0.41175956, 0.58824044],\n",
+       "       [0.49022768, 0.50977232],\n",
+       "       [0.3635048 , 0.6364952 ],\n",
+       "       [0.44335128, 0.55664872],\n",
+       "       [0.7042749 , 0.2957251 ],\n",
+       "       [0.37244267, 0.62755733],\n",
+       "       [0.39023891, 0.60976109],\n",
+       "       [0.49273046, 0.50726954],\n",
+       "       [0.4165239 , 0.5834761 ],\n",
+       "       [0.75178634, 0.24821366],\n",
+       "       [0.34933654, 0.65066346],\n",
+       "       [0.57137209, 0.42862791],\n",
+       "       [0.55349084, 0.44650916],\n",
+       "       [0.58805233, 0.41194767],\n",
+       "       [0.56396169, 0.43603831],\n",
+       "       [0.41293726, 0.58706274],\n",
+       "       [0.52797394, 0.47202606],\n",
+       "       [0.46207982, 0.53792018],\n",
+       "       [0.49263497, 0.50736503],\n",
+       "       [0.74009203, 0.25990797],\n",
+       "       [0.40041911, 0.59958089]])"
+      ]
+     },
+     "execution_count": 222,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "test = cd_test.drop(['Complaint ID'], axis =1)\n",
+    "proba = clf_logr.predict_proba(test)\n",
+    "proba[1:50] "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 223,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "submission.to_csv('P.Akash_Pattanaik_Project_1.csv', index = False)"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.7.7"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
